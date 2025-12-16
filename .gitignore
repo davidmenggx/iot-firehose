@@ -7,4 +7,4 @@ env/
 .env
 
 # pycache
-/__pycache/*
+__pycache__/
