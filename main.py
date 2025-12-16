@@ -1,8 +1,19 @@
+import os
 import asyncio
-import asyncpg
+import logging
 
+from fastapi import FastAPI
+import redis
+import asyncpg
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = FastAPI()
+
+# just testing for now
 async def run():
-    conn = await asyncpg.connect(user='postgres', password='test', database='iot-firehose', host='127.0.0.1', port=5432)
+    conn = await asyncpg.connect(user='postgres', password=os.getenv('DATABASE_PASS'), database='iot-firehose', host='127.0.0.1', port=5432)
 
     await conn.execute('TRUNCATE TABLE readings')
 
