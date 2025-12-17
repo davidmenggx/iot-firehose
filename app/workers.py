@@ -1,9 +1,15 @@
-# to do: create loop to pull from redis and push to postgres
 import asyncio
 
 import asyncpg
 
-from redis_config import redis_client
+from redis_config import task_queue
+from schemas.db_model import DatabasePayload
+
+async def save_to_db(reading: DatabasePayload):
+    """
+    Read from Redis queue and push to Postgres database
+    """
+    pass
 
 """
 # just testing for now
