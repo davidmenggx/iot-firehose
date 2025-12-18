@@ -21,7 +21,7 @@ DATABASE_PASS = os.getenv('DATABASE_PASS')
 app = FastAPI()
 
 @app.post("/readings/fast")
-async def post_reading(reading: DatabasePayload) -> ResponseModel: # verify if this should even be async
+async def post_reading(reading: DatabasePayload) -> ResponseModel:
     """
     Push client request to Redis worker queue, return success
     """
@@ -43,11 +43,11 @@ async def post_reading_slow(reading: DatabasePayload) -> ResponseModel:
         )
 
     try:
-        await conn.execute('''
-            INSERT INTO readings (id, reading)
-            VALUES ($1, $2)
-        ''', [reading.id, reading.reading])
-        await conn.commit()
+        async with conn.transaction(): # important: use context manager to automatically commit on cleanup
+            await conn.execute('''
+                INSERT INTO readings (id, reading)
+                VALUES ($1, $2)
+            ''', reading.id, reading.reading) # pass in the positional args for the sql query as separate args, not a list
     except asyncpg.UniqueViolationError:
         raise HTTPException(
             status_code=400, # 400 bad request
@@ -58,6 +58,6 @@ async def post_reading_slow(reading: DatabasePayload) -> ResponseModel:
         logging.error(traceback.format_exc())
         raise
     finally:
-        conn.close()
+        await conn.close() # important: remember to await conn.close() or it'll hang
 
     return successful_response

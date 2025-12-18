@@ -8,3 +8,7 @@ env/
 
 # pycache
 __pycache__/
+
+# postman
+postman/
+.postman/
