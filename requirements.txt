@@ -6,7 +6,6 @@ uvicorn==0.38.0
 asyncpg==0.31.0
 
 redis==7.1.0
-redis[hiredis]==3.3.0
 rq==2.6.1
 
 pydantic==2.11.9
