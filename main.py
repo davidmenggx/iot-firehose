@@ -56,9 +56,9 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
     try:
         async with conn.transaction(): # important: use context manager to automatically commit on cleanup
             await conn.execute('''
-                INSERT INTO readings (id, reading)
-                VALUES ($1, $2)
-            ''', reading.id, reading.reading) # pass in the positional args for the sql query as separate args, not a list
+                INSERT INTO readings (id, reading, timestamp)
+                VALUES ($1, $2, $3)
+            ''', reading.id, reading.reading, reading.timestamp) # pass in the positional args for the sql query as separate args, not a list
     except asyncpg.UniqueViolationError:
         raise HTTPException(
             status_code=400, # 400 bad request
@@ -82,9 +82,9 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
         async with app.state.pool.acquire() as conn: # main difference: use connection pool to avoid having to re-establish database connections
             async with conn.transaction(): # important: use context manager to automatically commit on cleanup
                 await conn.execute('''
-                    INSERT INTO readings (id, reading)
-                    VALUES ($1, $2)
-                ''', reading.id, reading.reading) # pass in the positional args for the sql query as separate args, not a list
+                    INSERT INTO readings (id, reading, timestamp)
+                    VALUES ($1, $2, $3)
+                ''', reading.id, reading.reading, reading.timestamp) # pass in the positional args for the sql query as separate args, not a list
     except asyncpg.UniqueViolationError:
         raise HTTPException(
             status_code=400, # 400 bad request

@@ -1,5 +1,5 @@
 from typing import Annotated
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, AfterValidator
 
@@ -14,9 +14,12 @@ class DatabasePayload(BaseModel):
     """
     id: primary key, 8 byte bigint
     reading: 2 byte smallint
+    timestamp: timestamp with time zone
     """
     id: int
     reading: SmallInt
+    # Important: database posts should not specify timestamp except for debugging purposes
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # use default factory to generate datetime at time of request
 
 class ResponseModel(BaseModel):
     """
