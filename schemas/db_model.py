@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, AfterValidator
@@ -19,7 +19,7 @@ class DatabasePayload(BaseModel):
     id: int
     reading: SmallInt
     # Important: database posts should not specify timestamp except for debugging purposes
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc)) # use default factory to generate datetime at time of request
+    timestamp: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc)) # use default factory to generate datetime at time of request
 
 class ResponseModel(BaseModel):
     """
@@ -27,8 +27,10 @@ class ResponseModel(BaseModel):
     """
     status: str
     message: str
+    timestamp: datetime
 
 successful_response = ResponseModel(
         status='success',
-        message='Item created'
+        message='Item created',
+        timestamp=datetime.now(timezone.utc)
     )
