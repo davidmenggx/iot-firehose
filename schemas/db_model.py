@@ -1,4 +1,14 @@
-from pydantic import BaseModel, Field
+from typing import Annotated
+from datetime import datetime
+
+from pydantic import BaseModel, Field, AfterValidator
+
+def enforce_smallint(value: int) -> int:
+    if not (-32768 <= value <= 32767):
+        raise ValueError('Reading must be a 2 byte signed integer')
+    return value
+
+SmallInt = Annotated[int, AfterValidator(enforce_smallint)] # used to enforce reading value is of type smallint to match postgres database
 
 class DatabasePayload(BaseModel):
     """
@@ -6,7 +16,7 @@ class DatabasePayload(BaseModel):
     reading: 2 byte smallint
     """
     id: int
-    reading: int = Field(ge=-32768, le=32767) # enforce smallint
+    reading: SmallInt
 
 class ResponseModel(BaseModel):
     """
