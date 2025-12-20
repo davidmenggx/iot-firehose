@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException
 import asyncpg
 from dotenv import load_dotenv
 
-from schemas.db_model import DatabasePayload, ResponseModel, successful_response
+from schemas.db_model import DatabasePayload, ResponseModel
 from redis_config import task_queue
 from app.workers import save_to_db
 
@@ -37,7 +37,10 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     Push client request to Redis worker queue, return success
     """
     task_queue.enqueue(save_to_db, reading)
-    return successful_response
+    return ResponseModel(
+        status='success',
+        message='Item created',
+    )
 
 @app.post("/readings/slow/nonpooling")
 async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseModel:
@@ -71,7 +74,10 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
     finally:
         await conn.close() # important: remember to await conn.close() or it'll just return the coroutine object not run it
 
-    return successful_response
+    return ResponseModel(
+        status='success',
+        message='Item created',
+    )
 
 @app.post("/readings/slow/pooling")
 async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
@@ -94,7 +100,8 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
         print(f'Error occurred: {e}')
         logging.error(traceback.format_exc())
         raise
-    finally:
-        await conn.close() # important: remember to await conn.close() or it'll just return the coroutine object not run it
 
-    return successful_response
+    return ResponseModel(
+        status='success',
+        message='Item created',
+    )

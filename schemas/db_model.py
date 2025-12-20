@@ -27,10 +27,4 @@ class ResponseModel(BaseModel):
     """
     status: str
     message: str
-    timestamp: datetime
-
-successful_response = ResponseModel(
-        status='success',
-        message='Item created',
-        timestamp=datetime.now(timezone.utc)
-    )
+    timestamp: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
