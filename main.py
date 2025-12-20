@@ -64,12 +64,12 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
             status_code=400, # 400 bad request
             detail='Item already exists'
         )
-    except Exception as e: # read more into postgres error codes
+    except Exception as e:
         print(f'Error occurred: {e}')
         logging.error(traceback.format_exc())
         raise
     finally:
-        await conn.close() # important: remember to await conn.close() or it'll hang
+        await conn.close() # important: remember to await conn.close() or it'll just return the coroutine object not run it
 
     return successful_response
 
@@ -90,11 +90,11 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
             status_code=400, # 400 bad request
             detail='Item already exists'
         )
-    except Exception as e: # read more into postgres error codes
+    except Exception as e:
         print(f'Error occurred: {e}')
         logging.error(traceback.format_exc())
         raise
     finally:
-        await conn.close() # important: remember to await conn.close() or it'll hang
+        await conn.close() # important: remember to await conn.close() or it'll just return the coroutine object not run it
 
     return successful_response
