@@ -3,6 +3,7 @@ import asyncio
 import logging # figure this out too
 import traceback
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 # see if i can clean this up
 from fastapi import FastAPI, HTTPException
@@ -20,16 +21,16 @@ load_dotenv()
 DATABASE_PASS = os.getenv('DATABASE_PASS')
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Create a context pool for the pooling endpoints to use
+    Creates a connection pool on startup and closes on shutdown
     """
     app.state.pool = await asyncpg.create_pool(user='postgres', password=DATABASE_PASS, 
-                                database='iot-firehose', host='127.0.0.1', port=5432)
+                                database='iot-firehose', host='127.0.0.1', port=5432) # runs on api startup
     yield
-    await app.state.pool.close()
+    await app.state.pool.close() # runs on api shutdown
 
-app = FastAPI(lifespan=lifespan) # read up on what lifespan is
+app = FastAPI(lifespan=lifespan)
 
 @app.post("/readings/fast")
 async def post_reading(reading: DatabasePayload) -> ResponseModel:
@@ -45,7 +46,10 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
 @app.post("/readings/slow/nonpooling")
 async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseModel:
     """
-    Push client request directly to PostgreSQL without connection pooling, return success
+    Attempts to make a connection to database without the connection pool
+    Attempts to write readings directly to Postgres
+    Closes connection
+    Returns success
     """    
     try: # attempt to make a connection to database
         conn = await asyncpg.connect(user='postgres', password=DATABASE_PASS, 
@@ -74,15 +78,18 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
     finally:
         await conn.close() # important: remember to await conn.close() or it'll just return the coroutine object not run it
 
-    return ResponseModel(
+    return ResponseModel( # You need to create the ResponseModel in the coroutine so it doesn't reuse the same datetime object every time
         status='success',
         message='Item created',
+        # no value for timestamp => default factory datetime
     )
 
 @app.post("/readings/slow/pooling")
 async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
     """
-    Push client request directly to PostgreSQL with connection pooling, return success
+    Acquires the connection pool
+    Attempts to write readings directly to Postgres
+    Returns success
     """    
     try:
         async with app.state.pool.acquire() as conn: # main difference: use connection pool to avoid having to re-establish database connections
