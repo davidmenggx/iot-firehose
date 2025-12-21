@@ -73,9 +73,11 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
     Returns success
     """    
     try: # attempt to make a connection to database
+        logger.debug(f'Request ID {reading.id} about to acquire connection at time {time_ns()}')
         conn = await asyncpg.connect(user='postgres', password=DATABASE_PASS, 
                                 database='iot-firehose', host='127.0.0.1', port=5432)
     except Exception as e:
+        logger.error(f'Request ID {reading.id} failed to connect to database at time {time_ns()}')
         raise HTTPException(
             status_code=500,
             detail='Could not connect to database'
@@ -83,22 +85,28 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
 
     try:
         async with conn.transaction(): # important: use context manager to automatically commit on cleanup
+            logger.debug(f'Request ID {reading.id} beginning execution at time {time_ns()}')
             await conn.execute('''
                 INSERT INTO readings (id, reading, timestamp)
                 VALUES ($1, $2, $3)
             ''', reading.id, reading.reading, reading.timestamp) # pass in the positional args for the sql query as separate args, not a list
+            logger.debug(f'Request ID {reading.id} finished execution at time {time_ns()}')
     except asyncpg.UniqueViolationError:
+        logger.error(f'Request ID {reading.id} failed to execute at time {time_ns()}: already exists')
         raise HTTPException(
             status_code=400, # 400 bad request
             detail='Item already exists'
         )
     except Exception as e:
         print(f'Error occurred: {e}')
+        logger.error(f'Request ID {reading.id} failed to execute at time {time_ns()}: {traceback.format_exc()}')
         #logging.error(traceback.format_exc())
         raise
     finally:
+        logger.debug(f'Request ID {reading.id} closing connection at time {time_ns()}')
         await conn.close() # important: remember to await conn.close() or it'll just return the coroutine object not run it
 
+    logger.debug(f'Request ID {reading.id} successfully logged at time {time_ns()}')
     return ResponseModel( # You need to create the ResponseModel in the coroutine so it doesn't reuse the same datetime object every time
         status='success',
         message='Item created',
