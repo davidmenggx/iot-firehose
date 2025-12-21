@@ -4,7 +4,7 @@ import gevent
 from locust import HttpUser, task
 from locust.exception import StopUser
 
-counter = count(start=1) # using global counter to update primary key in a thread safe way
+counter = count(start=1) # using global counter to update primary key id in a thread safe way
 
 class BasicConcurrentRequest(HttpUser):
     """
@@ -14,10 +14,11 @@ class BasicConcurrentRequest(HttpUser):
     @task
     def send_slow_nonpool_request(self):  
         ITERATIONS = 5
+        ENDPOINT = '/slow/pooling'
 
         def make_request():
-            i = next(counter)
-            self.client.post('/readings/slow/pooling', json={'id':i, 'reading': 67})
+            id = next(counter)
+            self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': 67})
     
         jobs = [gevent.spawn(make_request) for _ in range(ITERATIONS)] # a list of greenlet objects
 
