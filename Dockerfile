@@ -14,5 +14,7 @@ RUN useradd -m appuser
 USER appuser
 
 ENV VERBOSE=false
+ENV CLEAR_LOG=false
+ENV CLEAR_DB=false
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

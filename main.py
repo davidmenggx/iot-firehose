@@ -30,12 +30,24 @@ logging.basicConfig(filename='debug.log', encoding='utf-8', level=LOG_LEVEL)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Creates a connection pool on startup and closes on shutdown
-    Clears the debug log
+    If CLEAR_LOG mode, clears the debug log (default false)
+    If CLEAR_DB mode, clear the Postgres database (default false)
     """
     app.state.pool = await asyncpg.create_pool(user='postgres', password=DATABASE_PASS, 
                                 database='iot-firehose', host='127.0.0.1', port=5432) # runs on api startup
-    with open('debug.log', 'w') as file: # clears the debug log
-        pass
+    
+    CLEAR_LOG = os.getenv('CLEAR_LOG', 'false').lower() == 'true'
+    CLEAR_DB = os.getenv('CLEAR_DB', 'false').lower() == 'true'
+
+    if CLEAR_LOG:
+        with open('debug.log', 'w') as file: # clears the debug log
+            pass
+    if CLEAR_DB:
+        async with app.state.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute('''
+                    TRUNCATE TABLE readings
+                ''') # clears the readings database
     yield
     await app.state.pool.close() # runs on api shutdown
 
