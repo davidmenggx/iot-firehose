@@ -11,3 +11,5 @@ rq==2.6.1
 pydantic==2.11.9
 
 python-dotenv==1.1.1
+
+locust==2.42.6
