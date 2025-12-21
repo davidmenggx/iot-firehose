@@ -13,4 +13,6 @@ EXPOSE 8000
 RUN useradd -m appuser
 USER appuser
 
+ENV VERBOSE=false
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

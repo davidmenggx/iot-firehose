@@ -22,7 +22,9 @@ load_dotenv()
 DATABASE_PASS = os.getenv('DATABASE_PASS')
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='debug.log', encoding='utf-8', level=logging.DEBUG)
+VERBOSE = os.getenv('VERBOSE', 'false').lower() == 'true' # set verbose environment variable to True to log debug statements
+LOG_LEVEL = logging.DEBUG if VERBOSE else logging.INFO
+logging.basicConfig(filename='debug.log', encoding='utf-8', level=LOG_LEVEL)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
