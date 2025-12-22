@@ -104,7 +104,6 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
     except Exception as e:
         print(f'Error occurred: {e}')
         logger.error(f'Request ID {reading.id} failed to execute at time {time_ns()}: {traceback.format_exc()}')
-        #logging.error(traceback.format_exc())
         raise
     finally:
         logger.debug(f'Request ID {reading.id} closing connection at time {time_ns()}')
@@ -136,7 +135,6 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
                 logger.debug(f'Request ID {reading.id} finished execution at time {time_ns()}')
     except asyncpg.UniqueViolationError:
         logger.error(f'Request ID {reading.id} failed to execute at time {time_ns()}: already exists')
-        #logger.warning('Item with reading ID "{reading.id}" already exists')
         raise HTTPException(
             status_code=400, # 400 bad request
             detail='Item already exists'
@@ -144,7 +142,6 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
     except Exception as e:
         print(f'Error occurred: {e}')
         logger.error(f'Request ID {reading.id} failed to execute at time {time_ns()}: {traceback.format_exc()}')
-        #logger.error(traceback.format_exc())
         raise
     
     logger.debug(f'Request ID {reading.id} successfully logged at time {time_ns()}')
