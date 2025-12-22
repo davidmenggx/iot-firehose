@@ -1,7 +1,4 @@
 import logging
-import os
-
-from dotenv import load_dotenv
 
 def setup_logger(VERBOSE: bool = False, CLEAR_LOG: bool = False) -> logging.Logger:
     logger = logging.getLogger('iot-firehose-logger')

@@ -1,6 +1,4 @@
-import os
 from redis import Redis
-from rq import Queue
 
 STREAM_NAME = 'db_buffer'
 CONSUMER_GROUP = 'workers'

@@ -1,26 +1,16 @@
-import os
-import asyncio
-import logging
 import traceback
-import json
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from time import time_ns
 
-# see if i can clean this up
 from fastapi import FastAPI, HTTPException
-#from pydantic import BaseModel
-#import redis
-#from rq import Queue
 import asyncpg
-from dotenv import load_dotenv
 
 from schemas.db_model import DatabasePayload, ResponseModel
 from config.redis_config import redis_client, STREAM_NAME
 from config.database import create_async_db_pool, clear_db
 from config.log import setup_logger
 from config.app_vars import USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE, CLEAR_DB, VERBOSE, CLEAR_LOG
-from app.workers import save_to_db # can remove this guy?
 
 logger = setup_logger(VERBOSE, CLEAR_LOG)
 

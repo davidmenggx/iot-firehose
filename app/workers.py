@@ -1,11 +1,7 @@
 import signal
-import json
 import io
-from contextlib import contextmanager
 
-import redis
 from redis import exceptions
-import psycopg2
 
 from config.redis_config import redis_client, STREAM_NAME, CONSUMER_GROUP, CONSUMER_NAME
 from config.app_vars import USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE, CLEAR_DB, VERBOSE, CLEAR_LOG

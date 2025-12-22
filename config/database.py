@@ -1,10 +1,6 @@
-import os
-
 import asyncpg
-import psycopg2
 from asyncpg import Pool
 from psycopg2.pool import ThreadedConnectionPool
-from dotenv import load_dotenv
 
 async def create_async_db_pool(
         USER: str, 
