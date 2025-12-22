@@ -15,16 +15,19 @@ import asyncpg
 from dotenv import load_dotenv
 
 from schemas.db_model import DatabasePayload, ResponseModel
-from redis_config import task_queue
+from config.redis_config import task_queue
+from config.database import create_db_pool
 from app.workers import save_to_db
-
-load_dotenv()
-DATABASE_PASS = os.getenv('DATABASE_PASS')
 
 logger = logging.getLogger(__name__)
 VERBOSE = os.getenv('VERBOSE', 'false').lower() == 'true' # set verbose environment variable to True to log debug statements
 LOG_LEVEL = logging.DEBUG if VERBOSE else logging.INFO
 logging.basicConfig(filename='debug.log', encoding='utf-8', level=LOG_LEVEL)
+
+load_dotenv()
+DATABASE_PASS = os.getenv('DATABASE_PASS')
+MIN_SIZE=10
+MAX_SIZE=10
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -33,8 +36,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     If CLEAR_LOG mode, clears the debug log (default false)
     If CLEAR_DB mode, clear the Postgres database (default false)
     """
-    app.state.pool = await asyncpg.create_pool(user='postgres', password=DATABASE_PASS, 
-                                database='iot-firehose', host='127.0.0.1', port=5432) # runs on api startup
+    if not DATABASE_PASS:
+        raise KeyError('DATABASE_PASS not set in environment')
+
+    app.state.pool = await create_db_pool(DATABASE_PASS, MIN_SIZE, MAX_SIZE)
     
     CLEAR_LOG = os.getenv('CLEAR_LOG', 'false').lower() == 'true'
     CLEAR_DB = os.getenv('CLEAR_DB', 'false').lower() == 'true'
@@ -49,7 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     TRUNCATE TABLE readings
                 ''') # clears the readings database
     yield
-    await app.state.pool.close() # runs on api shutdown
+    await app.state.pool.close()
 
 app = FastAPI(lifespan=lifespan)
 

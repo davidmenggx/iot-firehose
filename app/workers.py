@@ -2,7 +2,7 @@ import asyncio
 
 import asyncpg
 
-from redis_config import task_queue
+from config.redis_config import task_queue
 from schemas.db_model import DatabasePayload
 
 async def save_to_db(reading: DatabasePayload):
