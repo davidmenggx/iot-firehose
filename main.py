@@ -2,6 +2,7 @@ import os
 import asyncio
 import logging
 import traceback
+import json
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from time import time_ns
@@ -15,27 +16,11 @@ import asyncpg
 from dotenv import load_dotenv
 
 from schemas.db_model import DatabasePayload, ResponseModel
-from config.redis_config import task_queue
-from config.database import create_db_pool, clear_db
+from config.redis_config import redis_client, STREAM_NAME
+from config.database import create_async_db_pool, clear_db
 from config.log import setup_logger
-from app.workers import save_to_db
-
-# ---------- Enter/set configs in environment or locally ----------
-load_dotenv()
-# Database settings:
-USER = 'postgres'
-DATABASE = 'iot-firehose'
-HOST = '127.0.0.1'
-PORT = 5432
-DATABASE_PASS = os.getenv('DATABASE_PASS') # Password to PostgreSQL database
-MIN_SIZE: int = 10 # Minimum number of connections asyncpg connection pool is initialized with
-MAX_SIZE: int = 10 # Maximum number of connections in asyncpg connection pool
-CLEAR_DB: bool = bool(os.getenv('CLEAR_DB', False)) # Automatically clear the database on startup
-
-# Logging settings:
-VERBOSE: bool = bool(os.getenv('VERBOSE', False)) # Enable debug messages for tracking event loop
-CLEAR_LOG: bool = bool(os.getenv('CLEAR_LOG', False)) # Automatically clear the debug.log on startup
-# -----------------------------------------------------------------
+from config.app_vars import USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE, CLEAR_DB, VERBOSE, CLEAR_LOG
+from app.workers import save_to_db # can remove this guy?
 
 logger = setup_logger(VERBOSE, CLEAR_LOG)
 
@@ -49,7 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not DATABASE_PASS:
         raise KeyError('DATABASE_PASS not set in environment')
 
-    app.state.pool = await create_db_pool(USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE)
+    app.state.pool = await create_async_db_pool(USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE)
 
     await clear_db(DATABASE_PASS, CLEAR_DB)
     yield
@@ -62,10 +47,11 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     """
     Push client request to Redis worker queue, return success
     """
-    task_queue.enqueue(save_to_db, reading)
+    redis_client.xadd(STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
+    #redis_client.lpush('db_buffer', json.dumps(reading)) # add the reading to the buffer, converting it into json format
     return ResponseModel(
-        status='success',
-        message='Item created',
+        status='buffered',
+        message='Item sent to Redis buffer',
     )
 
 @app.post("/readings/slow/nonpooling")

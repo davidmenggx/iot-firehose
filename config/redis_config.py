@@ -2,5 +2,8 @@ import os
 from redis import Redis
 from rq import Queue
 
-redis_client = Redis(host='redis://redis:6379/0', decode_responses=True)
-task_queue = Queue('task_queue', connection=redis_client)
+STREAM_NAME = 'db_buffer'
+CONSUMER_GROUP = 'workers'
+CONSUMER_NAME = 'worker1'
+
+redis_client = Redis.from_url('redis://localhost:6379/0', decode_responses=True)
