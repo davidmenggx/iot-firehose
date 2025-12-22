@@ -38,7 +38,6 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     Push client request to Redis worker queue, return success
     """
     redis_client.xadd(STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
-    #redis_client.lpush('db_buffer', json.dumps(reading)) # add the reading to the buffer, converting it into json format
     return ResponseModel(
         status='buffered',
         message='Item sent to Redis buffer',
