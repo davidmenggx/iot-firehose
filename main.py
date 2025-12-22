@@ -16,18 +16,28 @@ from dotenv import load_dotenv
 
 from schemas.db_model import DatabasePayload, ResponseModel
 from config.redis_config import task_queue
-from config.database import create_db_pool
+from config.database import create_db_pool, clear_db
+from config.log import setup_logger
 from app.workers import save_to_db
 
-logger = logging.getLogger(__name__)
-VERBOSE = os.getenv('VERBOSE', 'false').lower() == 'true' # set verbose environment variable to True to log debug statements
-LOG_LEVEL = logging.DEBUG if VERBOSE else logging.INFO
-logging.basicConfig(filename='debug.log', encoding='utf-8', level=LOG_LEVEL)
-
+# ---------- Enter/set configs in environment or locally ----------
 load_dotenv()
-DATABASE_PASS = os.getenv('DATABASE_PASS')
-MIN_SIZE=10
-MAX_SIZE=10
+# Database settings:
+USER = 'postgres'
+DATABASE = 'iot-firehose'
+HOST = '127.0.0.1'
+PORT = 5432
+DATABASE_PASS = os.getenv('DATABASE_PASS') # Password to PostgreSQL database
+MIN_SIZE: int = 10 # Minimum number of connections asyncpg connection pool is initialized with
+MAX_SIZE: int = 10 # Maximum number of connections in asyncpg connection pool
+CLEAR_DB: bool = bool(os.getenv('CLEAR_DB', False)) # Automatically clear the database on startup
+
+# Logging settings:
+VERBOSE: bool = bool(os.getenv('VERBOSE', False)) # Enable debug messages for tracking event loop
+CLEAR_LOG: bool = bool(os.getenv('CLEAR_LOG', False)) # Automatically clear the debug.log on startup
+# -----------------------------------------------------------------
+
+logger = setup_logger(VERBOSE, CLEAR_LOG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -39,20 +49,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not DATABASE_PASS:
         raise KeyError('DATABASE_PASS not set in environment')
 
-    app.state.pool = await create_db_pool(DATABASE_PASS, MIN_SIZE, MAX_SIZE)
-    
-    CLEAR_LOG = os.getenv('CLEAR_LOG', 'false').lower() == 'true'
-    CLEAR_DB = os.getenv('CLEAR_DB', 'false').lower() == 'true'
+    app.state.pool = await create_db_pool(USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE)
 
-    if CLEAR_LOG:
-        with open('debug.log', 'w') as file: # clears the debug log
-            pass
-    if CLEAR_DB:
-        async with app.state.pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute('''
-                    TRUNCATE TABLE readings
-                ''') # clears the readings database
+    await clear_db(DATABASE_PASS, CLEAR_DB)
     yield
     await app.state.pool.close()
 
