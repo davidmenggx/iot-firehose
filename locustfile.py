@@ -8,7 +8,7 @@ counter = count(start=1) # using global counter to update primary key id in a th
 
 class BasicConcurrentRequest(HttpUser):
     """
-    Each user will make ITERATIONS number of concurrent requests to the slow/pooling API
+    Each user will make ITERATIONS number of concurrent requests to the /slow/pooling endpoint
     Global counter is used to update primary key
     """
     @task
@@ -29,9 +29,13 @@ class BasicConcurrentRequest(HttpUser):
 
 # locust -f locustfile.py BasicRedisRequest -u 100 --host http://127.0.0.1:8000/ --headless
 class BasicRedisRequest(HttpUser):
+    """
+    Each user will make ITERATIONS number of concurrent requests to the /fast endpoint
+    Global counter is used to update primary key
+    """
     @task
     def send_slow_nonpool_request(self):  
-        ITERATIONS = 5
+        ITERATIONS = 5 # instead of creating more iterations, create more users (more iterations will hit max connection pool size in requests)
         ENDPOINT = '/fast'
 
         def make_request():

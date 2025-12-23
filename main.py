@@ -35,7 +35,7 @@ app = FastAPI(lifespan=lifespan)
 @app.post("/readings/fast")
 async def post_reading(reading: DatabasePayload) -> ResponseModel:
     """
-    Push client request to Redis worker queue, return success
+    Producer that xadds client request to Redis stream, return buffered
     """
     redis_client.xadd(STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
     return ResponseModel(
