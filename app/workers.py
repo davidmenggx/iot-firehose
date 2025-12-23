@@ -45,9 +45,9 @@ def save_to_db() -> None:
     while running: # worker loop
         readings = redis_client.xreadgroup(settings.CONSUMER_GROUP, 
                                         settings.CONSUMER_NAME, 
-                                        {settings.STREAM_NAME: '>'}, # '>' meaning: look it up
-                                        count=1000, 
-                                        block=5000)
+                                        {settings.STREAM_NAME: '>'}, # '>' means worker only reads from latest messages in the stream and adds to PEL util xack
+                                        count=1000, # read up to 1000 messages at a time
+                                        block=5000) # worker will wait for messages for up to 5 seconds before returning empty
         if not readings:
             continue
 
@@ -84,7 +84,7 @@ def save_to_db() -> None:
                 pool.putconn(conn)
     print('Shutting down worker')
     if settings.CLEAR_STREAM:
-        redis_client.delete(settings.STREAM_NAME)
+        redis_client.delete(settings.STREAM_NAME) # delete the stream key if set in config
 
 if __name__ == '__main__':
     print('Starting worker')
