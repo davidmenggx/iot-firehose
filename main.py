@@ -1,4 +1,5 @@
 import traceback
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from time import time_ns
@@ -12,7 +13,7 @@ from config.database import create_async_db_pool, clear_db
 from config.log import setup_logger
 from config.config import settings
 
-logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
+logger: logging.Logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -21,11 +22,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     If CLEAR_LOG mode, clears the debug log (default false)
     If CLEAR_DB mode, clear the Postgres database (default false)
     """
-    if not settings.DATABASE_PASS:
-        raise KeyError('DATABASE_PASS not set in environment')
-
-    app.state.pool = await create_async_db_pool(settings.USER, settings.DATABASE, settings.HOST, settings.PORT, settings.DATABASE_PASS, settings.MIN_SIZE, settings.MAX_SIZE) # type: ignore
-
+    app.state.pool = await create_async_db_pool(settings.USER, settings.DATABASE, settings.HOST, settings.PORT, 
+                                                settings.DATABASE_PASS, settings.MIN_SIZE, settings.MAX_SIZE) # type: ignore
     await clear_db(settings.DATABASE_PASS, settings.CLEAR_DB)
     yield
     await app.state.pool.close()
@@ -40,21 +38,21 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     redis_client.xadd(settings.STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
     return ResponseModel(
         status='buffered',
-        message='Item sent to Redis buffer',
+        message='Item added to Redis stream',
     )
 
 @app.post("/readings/slow/nonpooling")
 async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseModel:
     """
     Attempts to make a connection to database without the connection pool
-    Attempts to write readings directly to Postgres
+    Attempts to write readings directly to Postgres with asyncpg2
     Closes connection
     Returns success
     """    
     try: # attempt to make a connection to database
         logger.debug(f'Request ID {reading.id} about to acquire connection at time {time_ns()}')
-        conn = await asyncpg.connect(user='postgres', password=settings.DATABASE_PASS, 
-                                database='iot-firehose', host='127.0.0.1', port=5432)
+        conn = await asyncpg.connect(user=settings.USER, password=settings.DATABASE_PASS, 
+                                database=settings.DATABASE, host=settings.HOST, port=settings.PORT)
     except Exception as e:
         logger.error(f'Request ID {reading.id} failed to connect to database at time {time_ns()}')
         raise HTTPException(
@@ -94,8 +92,8 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
 @app.post("/readings/slow/pooling")
 async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
     """
-    Acquires the connection pool
-    Attempts to write readings directly to Postgres
+    Acquires asyncpg connection pool
+    Attempts to write readings directly to Postgres with asyncpg2
     Returns success
     """    
     try:

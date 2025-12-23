@@ -1,7 +1,9 @@
 import signal
 import io
+import logging
 from time import time_ns
 
+from psycopg2.pool import ThreadedConnectionPool
 from redis import exceptions
 
 from config.redis_config import redis_client
@@ -9,24 +11,25 @@ from config.config import settings
 from config.database import create_psycopg2_db_pool
 from config.log import setup_logger
 
-if not settings.DATABASE_PASS:
-    raise KeyError('DATABASE_PASS not set in environment')
+pool: ThreadedConnectionPool = create_psycopg2_db_pool(USER=settings.USER, DATABASE=settings.DATABASE, 
+                                                                    HOST=settings.HOST, PORT=settings.PORT, 
+                                                                    DATABASE_PASS=settings.DATABASE_PASS, MIN_SIZE=settings.MIN_SIZE, 
+                                                                    MAX_SIZE=settings.MAX_SIZE) # type: ignore
 
-pool = create_psycopg2_db_pool(USER=settings.USER, DATABASE=settings.DATABASE, HOST=settings.HOST, PORT=settings.PORT, DATABASE_PASS=settings.DATABASE_PASS, MIN_SIZE=settings.MIN_SIZE, MAX_SIZE=settings.MAX_SIZE) # type: ignore
+running: bool = True # flag to shut down worker after FastAPI shutdown
 
-running = True # flag to shut down worker after FastAPI shutdown
-
-def signal_shutdown(sig, frame) -> None:
+def signal_shutdown(_sig, _frame) -> None:
     """
     Stops the save_to_db worker
+    _sig and _frame are required by the signal module
     """
     global running
     running = False
 
-signal.signal(signal.SIGINT, signal_shutdown)
-signal.signal(signal.SIGTERM, signal_shutdown)
+signal.signal(signal.SIGINT, signal_shutdown) # Catch CTRL+C
+signal.signal(signal.SIGTERM, signal_shutdown) # Catch kill command
 
-logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
+logger: logging.Logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
 
 def save_to_db() -> None:
     """
@@ -39,7 +42,7 @@ def save_to_db() -> None:
     try: # create consumer group if it does not already exist
         redis_client.xgroup_create(settings.STREAM_NAME, settings.CONSUMER_GROUP, id='0', mkstream=True)
     except exceptions.ResponseError as e:
-        if "Consumer Group name already exists" not in str(e):
+        if "Consumer Group name already exists" not in str(e): # if the exception doesn't have to do with the consumer group already existing, raise
             raise
         
     while running: # worker loop
@@ -53,8 +56,8 @@ def save_to_db() -> None:
 
         conn = pool.getconn()
 
-        redis_ids = [] 
-        data = []
+        redis_ids = [] # capture Redis auto generated IDs, e.g. 1656416957625-0.
+        data = [] 
         # collect all of the readings and separate out redis ids (for acknowledgement) from data (for processing)
         for _, messages in readings: # type: ignore
             for message_id, payload in messages:
