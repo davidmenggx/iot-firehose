@@ -10,9 +10,9 @@ from schemas.db_model import DatabasePayload, ResponseModel
 from config.redis_config import redis_client, STREAM_NAME
 from config.database import create_async_db_pool, clear_db
 from config.log import setup_logger
-from config.app_vars import USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE, CLEAR_DB, VERBOSE, CLEAR_LOG
+from config.config import settings
 
-logger = setup_logger(VERBOSE, CLEAR_LOG)
+logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -21,12 +21,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     If CLEAR_LOG mode, clears the debug log (default false)
     If CLEAR_DB mode, clear the Postgres database (default false)
     """
-    if not DATABASE_PASS:
+    if not settings.DATABASE_PASS:
         raise KeyError('DATABASE_PASS not set in environment')
 
-    app.state.pool = await create_async_db_pool(USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE)
+    app.state.pool = await create_async_db_pool(settings.USER, settings.DATABASE, settings.HOST, settings.PORT, settings.DATABASE_PASS, settings.MIN_SIZE, settings.MAX_SIZE) # type: ignore
 
-    await clear_db(DATABASE_PASS, CLEAR_DB)
+    await clear_db(settings.DATABASE_PASS, settings.CLEAR_DB)
     yield
     await app.state.pool.close()
 
@@ -53,7 +53,7 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
     """    
     try: # attempt to make a connection to database
         logger.debug(f'Request ID {reading.id} about to acquire connection at time {time_ns()}')
-        conn = await asyncpg.connect(user='postgres', password=DATABASE_PASS, 
+        conn = await asyncpg.connect(user='postgres', password=settings.DATABASE_PASS, 
                                 database='iot-firehose', host='127.0.0.1', port=5432)
     except Exception as e:
         logger.error(f'Request ID {reading.id} failed to connect to database at time {time_ns()}')

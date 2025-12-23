@@ -5,14 +5,14 @@ from time import time_ns
 from redis import exceptions
 
 from config.redis_config import redis_client, STREAM_NAME, CONSUMER_GROUP, CONSUMER_NAME
-from config.app_vars import USER, DATABASE, HOST, PORT, DATABASE_PASS, MIN_SIZE, MAX_SIZE, VERBOSE, CLEAR_LOG
+from config.config import settings
 from config.database import create_psycopg2_db_pool
 from config.log import setup_logger
 
-if not DATABASE_PASS:
+if not settings.DATABASE_PASS:
     raise KeyError('DATABASE_PASS not set in environment')
 
-pool = create_psycopg2_db_pool(USER=USER, DATABASE=DATABASE, HOST=HOST, PORT=PORT, DATABASE_PASS=DATABASE_PASS, MIN_SIZE=MIN_SIZE, MAX_SIZE=MAX_SIZE)
+pool = create_psycopg2_db_pool(USER=settings.USER, DATABASE=settings.DATABASE, HOST=settings.HOST, PORT=settings.PORT, DATABASE_PASS=settings.DATABASE_PASS, MIN_SIZE=settings.MIN_SIZE, MAX_SIZE=settings.MAX_SIZE) # type: ignore
 
 running = True # flag to shut down worker after FastAPI shutdown
 
@@ -26,7 +26,7 @@ def signal_shutdown(sig, frame) -> None:
 signal.signal(signal.SIGINT, signal_shutdown)
 signal.signal(signal.SIGTERM, signal_shutdown)
 
-logger = setup_logger(VERBOSE, CLEAR_LOG)
+logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
 
 def save_to_db() -> None:
     """
