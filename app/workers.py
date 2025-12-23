@@ -4,7 +4,7 @@ from time import time_ns
 
 from redis import exceptions
 
-from config.redis_config import redis_client, STREAM_NAME, CONSUMER_GROUP, CONSUMER_NAME
+from config.redis_config import redis_client
 from config.config import settings
 from config.database import create_psycopg2_db_pool
 from config.log import setup_logger
@@ -37,15 +37,15 @@ def save_to_db() -> None:
     Bulk copies readings into PostgreSQL database
     """
     try: # create consumer group if it does not already exist
-        redis_client.xgroup_create(STREAM_NAME, CONSUMER_GROUP, id='0', mkstream=True)
+        redis_client.xgroup_create(settings.STREAM_NAME, settings.CONSUMER_GROUP, id='0', mkstream=True)
     except exceptions.ResponseError as e:
         if "Consumer Group name already exists" not in str(e):
             raise
         
     while running: # worker loop
-        readings = redis_client.xreadgroup(CONSUMER_GROUP, 
-                                        CONSUMER_NAME, 
-                                        {STREAM_NAME: '>'}, # '>' meaning: look it up
+        readings = redis_client.xreadgroup(settings.CONSUMER_GROUP, 
+                                        settings.CONSUMER_NAME, 
+                                        {settings.STREAM_NAME: '>'}, # '>' meaning: look it up
                                         count=1000, 
                                         block=5000)
         if not readings:
@@ -74,7 +74,7 @@ def save_to_db() -> None:
             try:
                 cur.copy_from(l, 'readings', columns=('id','reading', 'timestamp')) # bulk enters the data into Postgres
                 conn.commit()
-                redis_client.xack(STREAM_NAME, CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
+                redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
                 logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
             except:
                 conn.rollback()
@@ -83,6 +83,8 @@ def save_to_db() -> None:
             finally:
                 pool.putconn(conn)
     print('Shutting down worker')
+    if settings.CLEAR_STREAM:
+        redis_client.delete(settings.STREAM_NAME)
 
 if __name__ == '__main__':
     print('Starting worker')

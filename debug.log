@@ -1,0 +1,11 @@
+DEBUG:iot-firehose-logger:Redis group processing 1 requests at time 1766450268737842000
+DEBUG:iot-firehose-logger:Redis group completed processing 1 requests at time 1766450268763516100
+DEBUG:iot-firehose-logger:Request ID 1 about to acquire connection at time 1766450282202750100
+DEBUG:iot-firehose-logger:Request ID 1 beginning execution at time 1766450282382804500
+DEBUG:iot-firehose-logger:Request ID 1 finished execution at time 1766450282384784100
+DEBUG:iot-firehose-logger:Request ID 1 closing connection at time 1766450282387749200
+DEBUG:iot-firehose-logger:Request ID 1 successfully logged at time 1766450282389582800
+DEBUG:iot-firehose-logger:Request ID 2 about to acquire connection at time 1766450296104044900
+DEBUG:iot-firehose-logger:Request ID 2 beginning execution at time 1766450296104436300
+DEBUG:iot-firehose-logger:Request ID 2 finished execution at time 1766450296106331600
+DEBUG:iot-firehose-logger:Request ID 2 successfully logged at time 1766450296109598300

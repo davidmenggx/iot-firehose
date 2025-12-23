@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 import asyncpg
 
 from schemas.db_model import DatabasePayload, ResponseModel
-from config.redis_config import redis_client, STREAM_NAME
+from config.redis_config import redis_client
 from config.database import create_async_db_pool, clear_db
 from config.log import setup_logger
 from config.config import settings
@@ -37,7 +37,7 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     """
     Producer that xadds client request to Redis stream, return buffered
     """
-    redis_client.xadd(STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
+    redis_client.xadd(settings.STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
     return ResponseModel(
         status='buffered',
         message='Item sent to Redis buffer',
