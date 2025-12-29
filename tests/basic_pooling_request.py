@@ -11,9 +11,11 @@ class BasicConcurrentRequest(HttpUser):
     Each user will make ITERATIONS number of concurrent requests to the /slow/pooling endpoint
     Global counter is used to update primary key
     """
+    pool_maxsize = 50
+
     @task
     def send_slow_nonpool_request(self):  
-        ITERATIONS = 5
+        ITERATIONS = 25
         ENDPOINT = '/slow/pooling'
 
         def make_request():
