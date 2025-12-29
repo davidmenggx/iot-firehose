@@ -1,0 +1,8 @@
+DEBUG:iot-firehose-logger:Redis group processing 1 requests at time 1767022460654213300
+DEBUG:iot-firehose-logger:Redis group completed processing 1 requests at time 1767022460656977300
+DEBUG:iot-firehose-logger:Redis group processing 2 requests at time 1767022460657668100
+DEBUG:iot-firehose-logger:Redis group completed processing 2 requests at time 1767022460658949800
+DEBUG:iot-firehose-logger:Redis group processing 1 requests at time 1767022460659476800
+DEBUG:iot-firehose-logger:Redis group completed processing 1 requests at time 1767022460660477900
+DEBUG:iot-firehose-logger:Redis group processing 1 requests at time 1767022460660991200
+DEBUG:iot-firehose-logger:Redis group completed processing 1 requests at time 1767022460661961900

@@ -26,24 +26,3 @@ class BasicConcurrentRequest(HttpUser):
 
         raise StopUser() # one user will only make ITERATIONS number of requests
     
-
-# locust -f locustfile.py BasicRedisRequest -u 100 --host http://127.0.0.1:8000/ --headless
-class BasicRedisRequest(HttpUser):
-    """
-    Each user will make ITERATIONS number of concurrent requests to the /fast endpoint
-    Global counter is used to update primary key
-    """
-    @task
-    def send_slow_nonpool_request(self):  
-        ITERATIONS = 5 # instead of creating more iterations, create more users (more iterations will hit max connection pool size in requests)
-        ENDPOINT = '/fast'
-
-        def make_request():
-            id = next(counter)
-            self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': 67})
-    
-        jobs = [gevent.spawn(make_request) for _ in range(ITERATIONS)] # a list of greenlet objects
-
-        gevent.joinall(jobs) # pauses main execution to wait until jobs are finished
-
-        raise StopUser() # one user will only make ITERATIONS number of requests
