@@ -122,3 +122,25 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
         status='success',
         message='Item created',
     )
+
+@app.get("/health")
+def health_check():
+    return ResponseModel(
+        status='success',
+        message='App online'
+    )
+
+@app.get("/health/db")
+async def db_health_check():
+    try:
+        await asyncpg.connect(user=settings.USER, password=settings.DATABASE_PASS, 
+                                database=settings.DATABASE, host=settings.HOST, port=settings.PORT)
+        return ResponseModel(
+            status='success',
+            message='Database online'
+        )
+    except:
+        return ResponseModel(
+            status='failure',
+            message='Could not connect to database'
+        )
