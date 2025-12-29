@@ -9,7 +9,7 @@ import asyncpg
 
 from schemas.db_model import DatabasePayload, ResponseModel
 from config.redis_config import redis_client
-from config.database import create_async_db_pool, clear_db
+from config.database_config import create_async_db_pool, clear_db
 from config.log import setup_logger
 from config.config import settings
 

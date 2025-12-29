@@ -8,7 +8,7 @@ from redis import exceptions
 
 from config.redis_config import redis_client
 from config.config import settings
-from config.database import create_psycopg2_db_pool
+from config.database_config import create_psycopg2_db_pool
 from config.log import setup_logger
 
 pool: ThreadedConnectionPool = create_psycopg2_db_pool(USER=settings.USER, DATABASE=settings.DATABASE, 
