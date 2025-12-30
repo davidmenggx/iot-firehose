@@ -2,6 +2,7 @@ import signal
 import asyncio
 import io
 import logging
+from datetime import datetime
 from time import time_ns
 
 from psycopg2.pool import ThreadedConnectionPool
@@ -45,7 +46,11 @@ async def save_to_db() -> None:
     except exceptions.ResponseError as e:
         if "Consumer Group name already exists" not in str(e): # if the exception doesn't have to do with the consumer group already existing, raise
             raise
-        
+
+    redis_ids = [] # capture Redis auto generated IDs, e.g. 1656416957625-0.
+    data = [] 
+    last_flush = datetime.now()
+
     while running: # worker loop
         readings = await redis_client.xreadgroup(settings.CONSUMER_GROUP, 
                                         settings.CONSUMER_NAME, 
@@ -55,37 +60,39 @@ async def save_to_db() -> None:
         if not readings:
             continue
 
-        conn = pool.getconn()
-
-        redis_ids = [] # capture Redis auto generated IDs, e.g. 1656416957625-0.
-        data = [] 
+        
         # collect all of the readings and separate out redis ids (for acknowledgement) from data (for processing)
         for _, messages in readings: # type: ignore
             for message_id, payload in messages:
                 redis_ids.append(message_id)
                 data.append(payload)
             
-        if redis_ids:
+        if (len(redis_ids) > settings.BUFFER) or ((datetime.now() - last_flush).total_seconds() > 1):
+            conn = pool.getconn()
             logger.debug(f'Redis group processing {len(redis_ids)} requests at time {time_ns()}')
             
-        l = io.StringIO() # this is required to use the cursor.copy_from method
-        for record in data:
-            line = f'{record['id']}\t{record['reading']}\t{record['timestamp']}\n' # format the readings into distinct fields, one on each row
-            l.write(line)
-        l.seek(0)
+            l = io.StringIO() # this is required to use the cursor.copy_from method
+            for record in data:
+                line = f'{record['id']}\t{record['reading']}\t{record['timestamp']}\n' # format the readings into distinct fields, one on each row
+                l.write(line)
+            l.seek(0)
 
-        with conn.cursor() as cur:
-            try:
-                cur.copy_from(l, 'readings', columns=('id','reading', 'timestamp')) # bulk enters the data into Postgres
-                conn.commit()
-                await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
-                logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
-            except:
-                conn.rollback()
-                logger.error(f'Redis group failed to process {len(redis_ids)} requests, from request ID {redis_ids[0]} to {redis_ids[-1]} at time {time_ns()}')
-                raise
-            finally:
-                pool.putconn(conn)
+            with conn.cursor() as cur:
+                try:
+                    cur.copy_from(l, 'readings', columns=('id','reading', 'timestamp')) # bulk enters the data into Postgres
+                    conn.commit()
+                    await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
+                    
+                    redis_ids.clear()
+                    data.clear()
+                    last_flush = datetime.now()
+                    logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
+                except:
+                    conn.rollback()
+                    logger.error(f'Redis group failed to process {len(redis_ids)} requests, from request ID {redis_ids[0]} to {redis_ids[-1]} at time {time_ns()}')
+                    raise
+                finally:
+                    pool.putconn(conn)
     print('Shutting down worker')
     if settings.CLEAR_STREAM:
         await redis_client.delete(settings.STREAM_NAME) # delete the stream key if set in config

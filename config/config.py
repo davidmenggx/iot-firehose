@@ -21,6 +21,7 @@ class AppSettings(BaseSettings):
     CONSUMER_GROUP: str = 'workers'
     CONSUMER_NAME: str = 'worker1'
     CLEAR_STREAM: bool = False
+    BUFFER: int = 100
     # -----------------------------------------------------------------
     model_config = SettingsConfigDict(
         env_file='.env',

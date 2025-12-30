@@ -15,7 +15,7 @@ class BasicRedisRequest(HttpUser):
     Global counter is used to update primary key
     """
     @task
-    def send_slow_nonpool_request(self):  
+    def send_slow_nonpool_request(self):
         ENDPOINT = '/fast'
         id = next(counter)
         self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': 67})
