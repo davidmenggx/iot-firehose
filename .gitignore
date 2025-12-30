@@ -12,3 +12,6 @@ __pycache__/
 # postman
 postman/
 .postman/
+
+# log
+debug.log
