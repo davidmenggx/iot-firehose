@@ -21,7 +21,8 @@ class AppSettings(BaseSettings):
     CONSUMER_GROUP: str = 'workers'
     CONSUMER_NAME: str = 'worker1'
     CLEAR_STREAM: bool = False
-    BUFFER: int = 100
+    BUFFER: int = 100 # minimum number of requests until the worker automatically flushes
+    BUFFER_TIME: int = 1 # time in seconds until the worker automatically flushes
     # -----------------------------------------------------------------
     model_config = SettingsConfigDict(
         env_file='.env',
