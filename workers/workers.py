@@ -1,4 +1,5 @@
 import signal
+import asyncio
 import io
 import logging
 from time import time_ns
@@ -31,7 +32,7 @@ signal.signal(signal.SIGTERM, signal_shutdown) # Catch kill command
 
 logger: logging.Logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
 
-def save_to_db() -> None:
+async def save_to_db() -> None:
     """
     Read from Redis stream
     Returns a maximum of 1000 requests at a time
@@ -40,13 +41,13 @@ def save_to_db() -> None:
     Bulk copies readings into PostgreSQL database
     """
     try: # create consumer group if it does not already exist
-        redis_client.xgroup_create(settings.STREAM_NAME, settings.CONSUMER_GROUP, id='0', mkstream=True)
+        await redis_client.xgroup_create(settings.STREAM_NAME, settings.CONSUMER_GROUP, id='0', mkstream=True)
     except exceptions.ResponseError as e:
         if "Consumer Group name already exists" not in str(e): # if the exception doesn't have to do with the consumer group already existing, raise
             raise
         
     while running: # worker loop
-        readings = redis_client.xreadgroup(settings.CONSUMER_GROUP, 
+        readings = await redis_client.xreadgroup(settings.CONSUMER_GROUP, 
                                         settings.CONSUMER_NAME, 
                                         {settings.STREAM_NAME: '>'}, # '>' means worker only reads from latest messages in the stream and adds to PEL util xack
                                         count=1000, # read up to 1000 messages at a time
@@ -77,7 +78,7 @@ def save_to_db() -> None:
             try:
                 cur.copy_from(l, 'readings', columns=('id','reading', 'timestamp')) # bulk enters the data into Postgres
                 conn.commit()
-                redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
+                await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
                 logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
             except:
                 conn.rollback()
@@ -87,8 +88,8 @@ def save_to_db() -> None:
                 pool.putconn(conn)
     print('Shutting down worker')
     if settings.CLEAR_STREAM:
-        redis_client.delete(settings.STREAM_NAME) # delete the stream key if set in config
+        await redis_client.delete(settings.STREAM_NAME) # delete the stream key if set in config
 
 if __name__ == '__main__':
     print('Starting worker')
-    save_to_db()
+    asyncio.run(save_to_db())

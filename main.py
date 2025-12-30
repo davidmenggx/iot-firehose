@@ -35,7 +35,7 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     """
     Producer that xadds client request to Redis stream, return buffered
     """
-    redis_client.xadd(settings.STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
+    await redis_client.xadd(settings.STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
     return ResponseModel(
         status='buffered',
         message='Item added to Redis stream',
