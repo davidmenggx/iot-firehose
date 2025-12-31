@@ -1,3 +1,4 @@
+import random
 from itertools import count
 
 import gevent
@@ -18,4 +19,4 @@ class BasicRedisRequest(HttpUser):
     def send_slow_nonpool_request(self):
         ENDPOINT = '/fast'
         id = next(counter)
-        self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': 67})
+        self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': random.randint(0, 100)})

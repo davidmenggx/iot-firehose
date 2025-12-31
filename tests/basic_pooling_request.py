@@ -1,3 +1,4 @@
+import random
 from itertools import count
 
 import gevent
@@ -20,7 +21,7 @@ class BasicConcurrentRequest(HttpUser):
 
         def make_request():
             id = next(counter)
-            self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': 67})
+            self.client.post(f'/readings{ENDPOINT}', json={'id':id, 'reading': random.randint(0, 100)})
     
         jobs = [gevent.spawn(make_request) for _ in range(ITERATIONS)] # a list of greenlet objects
 
