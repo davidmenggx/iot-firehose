@@ -15,7 +15,7 @@ class BasicConcurrentRequest(HttpUser):
 
     @task
     def send_slow_nonpool_request(self):  
-        ITERATIONS = 25
+        ITERATIONS = 5
         ENDPOINT = '/slow/pooling'
 
         def make_request():
@@ -27,4 +27,3 @@ class BasicConcurrentRequest(HttpUser):
         gevent.joinall(jobs) # pauses main execution to wait until jobs are finished
 
         raise StopUser() # one user will only make ITERATIONS number of requests
-    

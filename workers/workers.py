@@ -74,11 +74,13 @@ async def save_to_db() -> None:
             async with pool.acquire() as conn:
                 async with conn.transaction():
                     try:
+                        logger.debug(f'Redis group making database copy with {len(redis_ids)} requests at time {time_ns()}')
                         await conn.copy_records_to_table(
                             'readings',
                             records=records,
                             columns=('id', 'reading', 'timestamp')
                         ) # bulk enters the data into Postgres
+                        logger.debug(f'Redis group acknowledging completing {len(redis_ids)} requests at time {time_ns()}')
                         await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
                         
                         # clear the buffers
