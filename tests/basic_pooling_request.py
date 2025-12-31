@@ -16,7 +16,7 @@ class BasicConcurrentRequest(HttpUser):
 
     @task
     def send_slow_nonpool_request(self):  
-        ITERATIONS = 5
+        ITERATIONS = 7
         ENDPOINT = '/slow/pooling'
 
         def make_request():

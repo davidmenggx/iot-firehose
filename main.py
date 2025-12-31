@@ -106,6 +106,8 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
                     VALUES ($1, $2, $3)
                 ''', reading.id, reading.reading, reading.timestamp) # pass in the positional args for the sql query as separate args, not a list
                 logger.debug(f'Request ID {reading.id} finished execution at time {time_ns()}')
+            logger.debug(f'Request ID {reading.id} finalized transaction at time {time_ns()}')
+        logger.debug(f'Request ID {reading.id} releasing connection at time {time_ns()}')
     except asyncpg.UniqueViolationError:
         logger.error(f'Request ID {reading.id} failed to execute at time {time_ns()}: already exists')
         raise HTTPException(
