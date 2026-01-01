@@ -20,23 +20,6 @@ async def create_async_db_pool(
         max_size=MAX_SIZE
     )
 
-def create_psycopg2_db_pool(
-        USER: str, 
-        DATABASE: str,
-        HOST: str,
-        PORT: int,
-        DATABASE_PASS: str, 
-        MIN_SIZE: int = 10, 
-        MAX_SIZE: int = 10) -> ThreadedConnectionPool:
-    return ThreadedConnectionPool(
-        MIN_SIZE, 
-        MAX_SIZE, 
-        user=USER, 
-        password=DATABASE_PASS, 
-        host=HOST, 
-        port=PORT, 
-        database=DATABASE)
-
 async def clear_db(DATABASE_PASS: str, CLEAR_DB: bool = False) -> None:
     if CLEAR_DB:
         conn = await asyncpg.connect(user='postgres', password=DATABASE_PASS, 

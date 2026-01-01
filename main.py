@@ -93,7 +93,7 @@ async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseMode
 async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
     """
     Acquires asyncpg connection pool
-    Attempts to write readings directly to Postgres with asyncpg2
+    Attempts to write readings directly to Postgres with asyncpg
     Returns success
     """    
     try:
