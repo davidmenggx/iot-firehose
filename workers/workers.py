@@ -5,6 +5,7 @@ from datetime import datetime
 from time import time_ns
 
 from redis import exceptions
+from asyncpg.exceptions import UniqueViolationError
 
 from config.redis_config import redis_client
 from config.config import settings
@@ -71,28 +72,34 @@ async def save_to_db() -> None:
 
             records = [(int(r['id']), int(r['reading']), datetime.fromisoformat(r['timestamp'])) for r in data] # make sure data is in correct format for postgres
 
-            async with pool.acquire() as conn:
-                async with conn.transaction():
-                    try:
-                        logger.debug(f'Redis group making database copy with {len(redis_ids)} requests at time {time_ns()}')
-                        await conn.copy_records_to_table(
-                            'readings',
-                            records=records,
-                            columns=('id', 'reading', 'timestamp')
-                        ) # bulk enters the data into Postgres
-                        logger.debug(f'Redis group acknowledging completing {len(redis_ids)} requests at time {time_ns()}')
-                        await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
-                        
-                        # clear the buffers
-                        redis_ids.clear()
-                        data.clear()
+            
+            try:
+                async with pool.acquire() as conn:
+                    async with conn.transaction():
+                            logger.debug(f'Redis group making database copy with {len(redis_ids)} requests at time {time_ns()}')
+                            await conn.copy_records_to_table(
+                                'readings',
+                                records=records,
+                                columns=('id', 'reading', 'timestamp')
+                            ) # bulk enters the data into Postgres
+                            logger.debug(f'Redis group acknowledging completing {len(redis_ids)} requests at time {time_ns()}')
+                            await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
+                            
+                            # clear the buffers
+                            redis_ids.clear()
+                            data.clear()
 
-                        last_flush = datetime.now() # restart the timer
+                            last_flush = datetime.now() # restart the timer
 
-                        logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
-                    except:
-                        logger.error(f'Redis group failed to process {len(redis_ids)} requests, from request ID {redis_ids[0]} to {redis_ids[-1]} at time {time_ns()}')
-                        raise
+                            logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
+            except UniqueViolationError as e:
+                logger.error(f'Duplicate primary key found, skipping this batch of length {len(redis_ids)}')
+                redis_ids.clear()
+                data.clear()
+            except:
+                logger.error(f'Redis group failed to process {len(redis_ids)} requests, from request ID {redis_ids[0]} to {redis_ids[-1]} at time {time_ns()}')
+                raise
+
     print('Shutting down worker')
     if settings.CLEAR_STREAM:
         await redis_client.delete(settings.STREAM_NAME) # delete the stream key if set in config
