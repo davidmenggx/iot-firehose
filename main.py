@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await clear_db(settings.DATABASE_PASS, settings.CLEAR_DB)
     yield
     await app.state.pool.close()
+    await redis_client.close()
 
 app = FastAPI(lifespan=lifespan)
 
