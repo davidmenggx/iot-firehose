@@ -1,6 +1,5 @@
 import asyncpg
 from asyncpg import Pool
-from psycopg2.pool import ThreadedConnectionPool
 
 async def create_async_db_pool(
         USER: str, 
