@@ -1,9 +1,7 @@
 import random
 from itertools import count
 
-import gevent
 from locust import FastHttpUser, task, constant
-from locust.exception import StopUser
 
 counter = count(start=1) # using global counter to update primary key id in a thread safe way
 
@@ -12,8 +10,8 @@ counter = count(start=1) # using global counter to update primary key id in a th
 class HighThroughputUser(FastHttpUser):
     """
     Using Locust to manage greenlets instead of manually
-    FastHttpUser is more CPU efficient and designed for high throughput testing
     This prevents exhausting the number of sockets in the OS by avoiding creating new connections every time
+    FastHttpUser is more CPU efficient and designed for high throughput testing
     Global counter is used to update primary key
     """
     wait_time = constant(0) # make the users send requests as fast as possible

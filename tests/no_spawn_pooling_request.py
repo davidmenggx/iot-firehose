@@ -1,9 +1,7 @@
 import random
 from itertools import count
 
-import gevent
 from locust import HttpUser, task
-from locust.exception import StopUser
 
 counter = count(start=1) # using global counter to update primary key id in a thread safe way
 

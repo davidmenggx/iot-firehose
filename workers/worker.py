@@ -12,7 +12,6 @@ from config.config import settings
 from config.database_config import create_async_db_pool
 from config.log import setup_logger
 
-
 running: bool = True # flag to shut down worker after FastAPI shutdown
 
 def signal_shutdown(_sig, _frame) -> None:
