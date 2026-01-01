@@ -11,6 +11,7 @@ class AppSettings(BaseSettings):
     MIN_SIZE: int = 10 # Minimum number of connections asyncpg connection pool is initialized with
     MAX_SIZE: int = 10 # Maximum number of connections asyncpg connection pool is initialized with
     CLEAR_DB: bool = False # Automatically clear the database on startup
+    CLEAR_DB2: bool = False # Automatically clears the readings2 (thread safe) database on startup
 
     # Logging settings:
     VERBOSE: bool = False # Enable debug messages for tracking event loop
