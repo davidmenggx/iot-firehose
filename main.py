@@ -36,7 +36,13 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
     """
     Producer that xadds client request to Redis stream, return buffered
     """
-    await redis_client.xadd(settings.STREAM_NAME, reading.model_dump(mode='json')) # type: ignore
+    payload = {
+        'id': reading.id,
+        'reading': reading.reading,
+        'timestamp': reading.timestamp.isoformat() # type: ignore
+    } # using a dictionary payload instead of json dumping the pydantic model results in slightly less CPU usage
+    
+    await redis_client.xadd(settings.STREAM_NAME, payload) # type: ignore
     return ResponseModel(
         status='buffered',
         message='Item added to Redis stream',

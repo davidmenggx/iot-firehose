@@ -67,20 +67,20 @@ async def save_to_db() -> None:
                 data.append(payload)
             
         if (len(redis_ids) > settings.BUFFER) or ((datetime.now() - last_flush).total_seconds() > settings.BUFFER_TIME): # logic to clear the buffer when BUFFER capacity is hit or BUFFER_TIME is reached
-            logger.debug(f'Redis group processing {len(redis_ids)} requests at time {time_ns()}')
+            # logger.debug(f'Redis group processing {len(redis_ids)} requests at time {time_ns()}')
 
             records = [(int(r['id']), int(r['reading']), datetime.fromisoformat(r['timestamp'])) for r in data] # make sure data is in correct format for postgres
 
             try:
                 async with pool.acquire() as conn:
                     async with conn.transaction():
-                            logger.debug(f'Redis group making database copy with {len(redis_ids)} requests at time {time_ns()}')
+                            # logger.debug(f'Redis group making database copy with {len(redis_ids)} requests at time {time_ns()}')
                             await conn.copy_records_to_table(
                                 'readings',
                                 records=records,
                                 columns=('id', 'reading', 'timestamp')
                             ) # bulk enters the data into Postgres
-                            logger.debug(f'Redis group acknowledging completing {len(redis_ids)} requests at time {time_ns()}')
+                            # logger.debug(f'Redis group acknowledging completing {len(redis_ids)} requests at time {time_ns()}')
                             await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
                             
                             # clear the buffers
@@ -89,15 +89,15 @@ async def save_to_db() -> None:
 
                             last_flush = datetime.now() # restart the timer
 
-                            logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
+                            # logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
             except UniqueViolationError as e:
-                logger.error(f'Duplicate primary key found, skipping this batch of length {len(redis_ids)}')
+                # logger.error(f'Duplicate primary key found, skipping this batch of length {len(redis_ids)}')
                 print(f'Duplicate primary key found, skipping this batch of length {len(redis_ids)}')
                 
                 redis_ids.clear()
                 data.clear()
             except:
-                logger.error(f'Redis group failed to process {len(redis_ids)} requests, from request ID {redis_ids[0]} to {redis_ids[-1]} at time {time_ns()}')
+                # logger.error(f'Redis group failed to process {len(redis_ids)} requests, from request ID {redis_ids[0]} to {redis_ids[-1]} at time {time_ns()}')
                 raise
 
     print('Shutting down worker')
