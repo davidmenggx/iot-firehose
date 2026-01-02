@@ -19,8 +19,10 @@ logger: logging.Logger = setup_logger(settings.VERBOSE, settings.CLEAR_LOG)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Creates a connection pool on startup and closes on shutdown
-    If CLEAR_LOG mode, clears the debug log (default false)
-    If CLEAR_DB mode, clear the Postgres database (default false)
+    If CLEAR_LOG mode, clears the debug log (default False)
+    If CLEAR_DB mode, clear the readings table (default False)
+    If CLEAR_DB2 mode, clear the readings2 table (default False)
+    Closes connection pool and redis client on shutdown
     """
     app.state.pool = await create_async_db_pool(settings.USER, settings.DATABASE, settings.HOST, settings.PORT, 
                                                 settings.DATABASE_PASS, settings.MIN_SIZE, settings.MAX_SIZE) # type: ignore
@@ -52,7 +54,7 @@ async def post_reading(reading: DatabasePayload) -> ResponseModel:
 async def post_reading_slow_nonpooling(reading: DatabasePayload) -> ResponseModel:
     """
     Attempts to make a connection to database without the connection pool
-    Attempts to write readings directly to Postgres with asyncpg2
+    Attempts to write readings directly to Postgres with asyncpg
     Closes connection
     Returns success
     """    
@@ -134,6 +136,7 @@ async def post_reading_slow_pooling(reading: DatabasePayload) -> ResponseModel:
 
 @app.get("/health")
 def health_check():
+    """Dummy health check endpoint"""
     return ResponseModel(
         status='success',
         message='App online'
@@ -141,6 +144,7 @@ def health_check():
 
 @app.get("/health/db")
 async def db_health_check():
+    """Dummy health check endpoint for the database connection"""
     try:
         await asyncpg.connect(user=settings.USER, password=settings.DATABASE_PASS, 
                                 database=settings.DATABASE, host=settings.HOST, port=settings.PORT)
