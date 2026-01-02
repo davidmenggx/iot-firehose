@@ -11,7 +11,7 @@ class AppSettings(BaseSettings):
     MIN_SIZE: int = 10 # Minimum number of connections asyncpg connection pool is initialized with
     MAX_SIZE: int = 10 # Maximum number of connections asyncpg connection pool is initialized with
     CLEAR_DB: bool = False # Automatically clear the database on startup
-    CLEAR_DB2: bool = False # Automatically clears the readings2 (thread safe) database on startup
+    CLEAR_DB2: bool = False # Automatically clears the readings2 (process safe) database on startup
 
     # Logging settings:
     VERBOSE: bool = False # Enable debug messages for tracking event loop
@@ -21,7 +21,7 @@ class AppSettings(BaseSettings):
     STREAM_NAME: str = 'db_buffer'
     CONSUMER_GROUP: str = 'workers'
     CONSUMER_NAME: str = 'worker1'
-    CLEAR_STREAM: bool = False
+    CLEAR_STREAM: bool = False # clears the redis stream at shutdown of worker
     BUFFER: int = 100 # minimum number of requests until the worker automatically flushes
     BUFFER_TIME: float = 1 # time in seconds until the worker automatically flushes
     # -----------------------------------------------------------------
@@ -29,6 +29,6 @@ class AppSettings(BaseSettings):
         env_file='.env',
         env_file_encoding='utf-8',
         extra='ignore'
-    )
+    ) # default to environment variables
 
 settings = AppSettings() # type: ignore
