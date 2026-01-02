@@ -7,6 +7,7 @@ counter = count(start=1) # using global counter to update primary key id in a th
 
 class BasicConcurrentRequest(HttpUser):
     """
+    Sends post request to /slow/pooling endpoint
     Using Locust to manage greenlets instead of manually
     This prevents exhausting the number of sockets in the OS by avoiding creating new connections every time
     Global counter is used to update primary key

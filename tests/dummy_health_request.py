@@ -2,7 +2,8 @@ from locust import FastHttpUser, task, constant
 
 class DummyHealthRequest(FastHttpUser):
     """
-    Get request to health check endpoint to test Locust RPS
+    Dummy request to health check endpoint for testing purposes
+    FastHttpUser is more CPU efficient and designed for high throughput testing
     """
     wait_time = constant(0) # make the users send requests as fast as possible
 

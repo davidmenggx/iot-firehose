@@ -17,7 +17,7 @@ running: bool = True # flag to shut down worker after FastAPI shutdown
 
 def signal_shutdown(_sig, _frame) -> None:
     """
-    Stops the save_to_db worker
+    Stops the save_to_db loop
     _sig and _frame are required by the signal module
     """
     global running
@@ -35,7 +35,7 @@ async def save_to_db() -> None:
     Waits 5 seconds if no messages have been added to the stream
     Waits for BUFFER requests to accumulate or BUFFER_TIME second to pass
     Acquires asyncpg connection pool
-    Bulk copies readings into PostgreSQL database
+    Bulk copies readings into readings2 table
     """
     try: # create consumer group if it does not already exist
         await redis_client.xgroup_create(settings.STREAM_NAME, settings.CONSUMER_GROUP, id='0', mkstream=True)
@@ -45,8 +45,8 @@ async def save_to_db() -> None:
 
     # create buffers
     redis_ids = [] # capture Redis auto generated IDs, e.g. 1656416957625-0.
-    data = [] 
-    last_flush = datetime.now()
+    data = [] # capture data from each payload
+    last_flush = datetime.now() # starts the timer for clearing the buffer after BUFFER_TIME seconds elapse
 
     pool = await create_async_db_pool(USER=settings.USER, DATABASE=settings.DATABASE,
                             HOST=settings.HOST, PORT=settings.PORT, DATABASE_PASS=settings.DATABASE_PASS,
@@ -67,34 +67,35 @@ async def save_to_db() -> None:
                 redis_ids.append(message_id)
                 data.append(payload)
             
-        if (len(redis_ids) > settings.BUFFER) or ((datetime.now() - last_flush).total_seconds() > settings.BUFFER_TIME): # logic to clear the buffer when BUFFER capacity is hit or BUFFER_TIME is reached
+        if (len(redis_ids) > settings.BUFFER) or ((datetime.now() - last_flush).total_seconds() > settings.BUFFER_TIME): # clears the buffer when BUFFER capacity is hit or BUFFER_TIME is reached
             logger.debug(f'Redis group processing {len(redis_ids)} requests at time {time_ns()}')
 
-            records = [(int(r['reading']), datetime.fromisoformat(r['timestamp'])) for r in data] # make sure data is in correct format for postgres
+            records = [(int(r['reading']), datetime.fromisoformat(r['timestamp'])) for r in data] # make sure data is in correct format for postgres. id is not needed since readings2 uses an identity column
 
             try:
                 async with pool.acquire() as conn:
                     async with conn.transaction():
                             logger.debug(f'Redis group making database copy with {len(redis_ids)} requests at time {time_ns()}')
-                            await conn.copy_records_to_table(
+                            await conn.copy_records_to_table( 
                                 'readings2',
                                 records=records,
-                                columns=('reading', 'timestamp')
-                            ) # bulk enters the data into Postgres => only the reading and timestamp values since id is an identity column
+                                columns=('reading', 'timestamp') 
+                            ) # uses PostgreSQL's COPY protocol, which is faster than individual inserts
                             logger.debug(f'Redis group acknowledging completing {len(redis_ids)} requests at time {time_ns()}')
-                            await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: you need to acknowledge completing the task to clear from pending entries list
+                            await redis_client.xack(settings.STREAM_NAME, settings.CONSUMER_GROUP, *redis_ids) # important: acknowledges completing the task(s) to clear from pending entries list
                             
                             # clear the buffers
                             redis_ids.clear()
                             data.clear()
 
-                            last_flush = datetime.now() # restart the timer
+                            last_flush = datetime.now() # restart the BUFFER_TIME timer
 
                             logger.debug(f'Redis group completed processing {len(redis_ids)} requests at time {time_ns()}')
-            except UniqueViolationError as e:
+            except UniqueViolationError as e: # catches duplicate primary key errors gracefully, skipping batch instead of crashing worker
                 logger.error(f'Duplicate primary key found, skipping this batch of length {len(redis_ids)}')
                 print(f'Duplicate primary key found, skipping this batch of length {len(redis_ids)}')
                 
+                # clears the buffer to avoid retrying failed group
                 redis_ids.clear()
                 data.clear()
             except:
